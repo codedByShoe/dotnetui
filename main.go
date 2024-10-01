@@ -20,6 +20,8 @@ type SearchResult struct {
 	Data []NuGetPackage `json:"data"`
 }
 
+var result SearchResult
+
 func main() {
 	app := tview.NewApplication()
 
@@ -35,7 +37,7 @@ func main() {
 	input := tview.NewInputField()
 	input.SetBackgroundColor(tcell.ColorDefault)
 	input.SetFieldBackgroundColor(tcell.ColorDefault)
-	input.SetBorder(true).SetTitle("Search Packages").SetBorderPadding(0, 0, 1, 1)
+	input.SetBorder(true).SetTitle("Search Package By Name").SetBorderPadding(0, 0, 1, 1)
 
 	// create the package details view
 	details := tview.NewTextView().SetDynamicColors(true)
@@ -54,7 +56,67 @@ func main() {
 		if key == tcell.KeyEnter {
 			query := input.GetText()
 			go searchPackages(query, list, app)
+			app.SetFocus(list)
+			input.SetText("")
 		}
+	})
+
+	// handle key events
+	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyTab:
+			switch app.GetFocus() {
+			case input:
+				app.SetFocus(list)
+			case list:
+				app.SetFocus(input)
+			}
+			return nil
+		case tcell.KeyBacktab:
+			switch app.GetFocus() {
+			case input:
+				app.SetFocus(list)
+			case list:
+				app.SetFocus(input)
+			}
+			return nil
+		}
+		if app.GetFocus() == list {
+			switch event.Rune() {
+			case 'j':
+				currentIndex := list.GetCurrentItem()
+				if currentIndex < list.GetItemCount()-1 {
+					// TODO: Move to a function
+					newIdx := currentIndex + 1
+					list.SetCurrentItem(newIdx)
+					id, _ := list.GetItemText(newIdx)
+					for k, v := range result.Data {
+						if v.ID == id {
+							pkg := result.Data[k]
+							go showPackageDetails(pkg, details)
+						}
+					}
+				}
+				return nil
+			case 'k':
+				currentIndex := list.GetCurrentItem()
+				// get the current item id
+				if currentIndex > 0 {
+					// TODO: Move to a function
+					newIdx := currentIndex - 1
+					list.SetCurrentItem(newIdx)
+					id, _ := list.GetItemText(newIdx)
+					for k, v := range result.Data {
+						if v.ID == id {
+							pkg := result.Data[k]
+							go showPackageDetails(pkg, details)
+						}
+					}
+				}
+				return nil
+			}
+		}
+		return event
 	})
 
 	if err := app.SetRoot(flex, true).EnableMouse(true).Run(); err != nil {
@@ -72,7 +134,6 @@ func searchPackages(query string, list *tview.List, app *tview.Application) {
 	}
 	defer resp.Body.Close()
 
-	var result SearchResult
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		// Handle error
 		return
@@ -86,17 +147,11 @@ func searchPackages(query string, list *tview.List, app *tview.Application) {
 	})
 }
 
-// func showPackageDetails(packageID string, details *tview.TextView) {
-// 	// In a real application, you would fetch more details about the package here
-// 	details.SetText(fmt.Sprintf("Package ID: %s\n\nPress 'i' to install or 'q' to go back", packageID))
-//
-// 	details.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-// 		if event.Rune() == 'i' {
-// 			go installPackage(packageID)
-// 		} else if event.Rune() == 'q' {
-// 			// Go back to the list
-// 			// You'll need to implement this logic
-// 		}
-// 		return event
-// 	})
-// }
+func showPackageDetails(pkg NuGetPackage, details *tview.TextView) {
+	detailsText := fmt.Sprintf("Package Id: %s\n", pkg.ID)
+	detailsText += fmt.Sprintf("Version: %s\n", pkg.Version)
+	detailsText += fmt.Sprintf("Total downloads: %d\n", pkg.TotalDownloads)
+	detailsText += fmt.Sprintf("Description: %s\n", pkg.Description)
+
+	details.SetText(detailsText)
+}
