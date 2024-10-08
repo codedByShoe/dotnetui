@@ -34,6 +34,7 @@ type PackageManager struct {
 	Layout            *tview.Flex
 	Url               string
 	SearchResults     []NuGetPackage
+	Query             string
 	InstalledPackages []string
 	Mu                sync.Mutex
 }
@@ -49,6 +50,7 @@ func NewPackageManager(app *tview.Application, url string) *PackageManager {
 		Layout:            tview.NewFlex(),
 		Url:               url,
 		SearchResults:     []NuGetPackage{},
+		Query:             "",
 		InstalledPackages: []string{},
 		Mu:                sync.Mutex{},
 	}
@@ -90,7 +92,6 @@ func (pm *PackageManager) buildLegend() {
 		SetTextAlign(tview.AlignCenter).
 		SetText("Quit: [yellow]<Esc>[white]")
 
-	// Set a smaller height for the legend
 	pm.Legend.SetRect(0, 0, 0, 1)
 	pm.Legend.SetBackgroundColor(tcell.ColorDefault)
 }
@@ -274,7 +275,6 @@ func (pm *PackageManager) Run() {
 	pm.handleInputSearch()
 	pm.listInstalledPackages()
 	pm.handleAppNavigation()
-
 	pm.App.SetRoot(pm.Layout, true).EnableMouse(true)
 }
 
@@ -284,11 +284,12 @@ func (pm *PackageManager) installPackages(packageId string) {
 	cmd := exec.Command("dotnet", "add", "package", packageId)
 	_, err := cmd.CombinedOutput()
 	if err != nil {
-		pm.Details.Clear()
-		pm.Details.SetText(fmt.Sprintf("Error Installing Package \n Error: %v", err))
+		pm.Installed.Clear()
+		pm.Installed.SetText(fmt.Sprintf("Error Installing Package \n Error: %v", err))
 	}
 	pm.Installed.Clear()
 	pm.Installed.AddItem(fmt.Sprintf("Installing %s...", packageId), "", 0, nil)
+
 	pm.listInstalledPackages()
 }
 
@@ -296,11 +297,15 @@ func (pm *PackageManager) uninstallPackage(packageId string) {
 	cmd := exec.Command("dotnet", "remove", "package", packageId)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		pm.Details.Clear()
-		pm.Details.SetText(fmt.Sprintf("Error Removing Package \nError: %v", string(output)))
+		pm.App.QueueUpdateDraw(func() {
+			pm.Details.Clear()
+			pm.Details.SetText(fmt.Sprintf("Error Removing Package \nError: %v", string(output)))
+		})
 	}
-	pm.Installed.Clear()
-	pm.Installed.AddItem(fmt.Sprintf("Removing %s...", packageId), "", 0, nil)
+	pm.App.QueueUpdateDraw(func() {
+		pm.Installed.Clear()
+		pm.Installed.AddItem(fmt.Sprintf("Removing %s...", packageId), "", 0, nil)
+	})
 	exec.Command("dotnet", "restore")
 	pm.listInstalledPackages()
 }
@@ -312,7 +317,6 @@ func (pm *PackageManager) listInstalledPackages() {
 		pm.Installed.Clear()
 		pm.Installed.AddItem("No dependencies found ", "", 0, nil)
 		pm.Installed.AddItem("Are you in a project folder?", "", 0, nil)
-
 		return
 	}
 	lines := strings.Split(string(output), "\n")
