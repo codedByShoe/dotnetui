@@ -1,4 +1,6 @@
-﻿using Terminal.Gui;
+﻿namespace Nugetui;
+
+using Terminal.Gui;
 using System.Text.Json;
 
 class Program
@@ -17,8 +19,152 @@ class Program
     public required int TotalDownloads { get; set; }
   }
 
+  public class ProgressDialog : Dialog
+  {
+    private readonly Label messageLabel;
+
+    public ProgressDialog(string title, string message) : base(title, 60, 8)
+    {
+      this.Border.BorderStyle = BorderStyle.Single;
+      this.Border.Effect3D = false;
+      this.Border.BorderBrush = Color.White;
+
+      var dialogScheme = new ColorScheme()
+      {
+        Normal = Application.Driver.MakeAttribute(Color.White, Color.Black),
+        Focus = Application.Driver.MakeAttribute(Color.White, Color.Black),
+        HotNormal = Application.Driver.MakeAttribute(Color.White, Color.Black),
+        HotFocus = Application.Driver.MakeAttribute(Color.White, Color.Black)
+      };
+
+      this.ColorScheme = dialogScheme;
+
+      messageLabel = new Label(message)
+      {
+        X = Pos.Center(),
+        Y = Pos.Center(),
+        Width = Dim.Fill() - 4
+      };
+
+      Add(messageLabel);
+
+    }
+
+    public void UpdateMessage(string message)
+    {
+      messageLabel.Text = message;
+    }
+
+    public void ShowDialog()
+    {
+      Application.Run(this);
+    }
+  }
+
   private static readonly HttpClient httpClient = new HttpClient();
   private static List<NugetPackage> currentPackages = new();
+
+  private static async Task<T> RunWithProgressDialog<T>(string title, string message, Func<ProgressDialog, Task<T>> task)
+  {
+    var dialog = new ProgressDialog(title, message);
+    var tcs = new TaskCompletionSource<T>();
+
+    Application.MainLoop.Invoke(async () =>
+    {
+      try
+      {
+        var result = await task(dialog);
+        tcs.SetResult(result);
+      }
+      catch (Exception ex)
+      {
+        tcs.SetException(ex);
+      }
+      finally
+      {
+        Application.MainLoop.Invoke(() =>
+        {
+          dialog.Running = false;
+        });
+      }
+    });
+
+    dialog.ShowDialog();
+    return await tcs.Task;
+  }
+
+  private static bool ShowConfirmationDialog(string title, string message)
+  {
+    var result = false;
+    var dialog = new Dialog(title, 60, 10);
+
+    // Style the dialog
+    dialog.Border.BorderStyle = BorderStyle.Single;
+    dialog.ColorScheme = new ColorScheme
+    {
+      Normal = Application.Driver.MakeAttribute(Color.White, Color.Black),
+      Focus = Application.Driver.MakeAttribute(Color.White, Color.Black),
+      HotNormal = Application.Driver.MakeAttribute(Color.White, Color.Black),
+      HotFocus = Application.Driver.MakeAttribute(Color.White, Color.Black)
+    };
+
+    // Center the dialog
+    dialog.X = Pos.Center();
+    dialog.Y = Pos.Center();
+
+    // Add the message
+    var label = new Label(message)
+    {
+      X = Pos.Center(),
+      Y = Pos.Center() - 1,
+      ColorScheme = dialog.ColorScheme
+    };
+
+    // Style for buttons
+    var buttonScheme = new ColorScheme
+    {
+      Normal = Application.Driver.MakeAttribute(Color.White, Color.Blue),
+      Focus = Application.Driver.MakeAttribute(Color.White, Color.BrightBlue),
+      HotNormal = Application.Driver.MakeAttribute(Color.White, Color.Blue),
+      HotFocus = Application.Driver.MakeAttribute(Color.White, Color.BrightBlue)
+    };
+
+    // Add No button
+    var noButton = new Button("No")
+    {
+      X = Pos.Center() - 6,
+      Y = Pos.Center() + 1,
+      ColorScheme = buttonScheme,
+      IsDefault = true
+    };
+    noButton.Clicked += () =>
+    {
+      result = false;
+      Application.RequestStop();
+    };
+
+    // Add Yes button
+    var yesButton = new Button("Yes")
+    {
+      X = Pos.Center() + 6,
+      Y = Pos.Center() + 1,
+      ColorScheme = buttonScheme
+    };
+    yesButton.Clicked += () =>
+    {
+      result = true;
+      Application.RequestStop();
+    };
+
+    // Add controls to dialog
+    dialog.Add(label, noButton, yesButton);
+
+    // Run the dialog
+    Application.Run(dialog);
+
+    // Return the result
+    return result;
+  }
 
   private static async Task<List<NugetPackage>> SearchNugetPackagesAsync(string searchTerm)
   {
@@ -157,6 +303,89 @@ class Program
     }
   }
 
+  private static async Task<bool> InstallPackageAsync(string packageId)
+  {
+    try
+    {
+      var processInfo = new System.Diagnostics.ProcessStartInfo
+      {
+        FileName = "dotnet",
+        Arguments = $"add package {packageId}",
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        UseShellExecute = false,
+        CreateNoWindow = true
+      };
+      using var process = System.Diagnostics.Process.Start(processInfo);
+      if (process == null)
+      {
+        return false;
+      }
+
+      await process.WaitForExitAsync();
+      return process.ExitCode == 0;
+
+    }
+    catch
+    {
+      return false;
+    }
+  }
+
+  private static async Task<bool> RestorePackageListAsync()
+  {
+    try
+    {
+      var processInfo = new System.Diagnostics.ProcessStartInfo
+      {
+        FileName = "dotnet",
+        Arguments = "restore",
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        UseShellExecute = false,
+        CreateNoWindow = true
+      };
+      using var process = System.Diagnostics.Process.Start(processInfo);
+      if (process == null) return false;
+      await process.WaitForExitAsync();
+      return process.ExitCode == 0;
+    }
+    catch
+    {
+      return false;
+    }
+  }
+
+  private static async Task<bool> UninstallPackageAsync(string packageId)
+  {
+    try
+    {
+      var processInfo = new System.Diagnostics.ProcessStartInfo
+      {
+        FileName = "dotnet",
+        Arguments = $"remove package {packageId}",
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        UseShellExecute = false,
+        CreateNoWindow = true
+      };
+      using var process = System.Diagnostics.Process.Start(processInfo);
+      if (process == null)
+      {
+        return false;
+      }
+
+      await process.WaitForExitAsync();
+      var restoreSuccess = await RestorePackageListAsync();
+      if (!restoreSuccess) return false;
+      return process.ExitCode == 0;
+    }
+    catch
+    {
+      return false;
+    }
+  }
+
   static void Main(string[] args)
   {
     Application.Init();
@@ -204,11 +433,6 @@ class Program
     leftFrame.Add(leftList);
     win.Add(leftFrame);
 
-    leftList.KeyPress += (args) =>
-    {
-      HandleVimNavigation(leftList, args.KeyEvent);
-    };
-
 
     var rightTopFrame = new FrameView("Package Details")
     {
@@ -254,9 +478,34 @@ class Program
     rightBottomFrame.Add(rightBottomList);
     win.Add(rightBottomFrame);
 
-    rightBottomList.KeyPress += (args) =>
+    rightBottomList.KeyPress += async (args) =>
     {
       HandleVimNavigation(rightBottomList, args.KeyEvent);
+      if ((args.KeyEvent.Key == Key.x || args.KeyEvent.Key == Key.X) && rightBottomList.SelectedItem >= 0 && rightBottomList.Source?.Count > 0)
+      {
+        var selectedLine = rightBottomList.Source.ToList()[rightBottomList.SelectedItem]
+            .ToString();
+
+        var packageId = selectedLine.Split(' ')[1];
+
+        if (!string.IsNullOrWhiteSpace(packageId))
+        {
+          if (ShowConfirmationDialog(
+              "Confirm Delete",
+              $"Are your sure you want to remove package {packageId}?"))
+          {
+            var success = await RunWithProgressDialog(
+                "Deleting",
+                $"Deleting package {packageId}",
+                async (dialog) => await UninstallPackageAsync(packageId)
+                );
+            if (success)
+            {
+              refreshProjectPackages(rightBottomList);
+            }
+          }
+        }
+      }
     };
 
 
@@ -299,6 +548,23 @@ class Program
 
     refreshProjectPackages(rightBottomList);
 
+    leftList.KeyPress += async (args) =>
+        {
+          HandleVimNavigation(leftList, args.KeyEvent);
+          if (args.KeyEvent.Key == Key.Enter && leftList.SelectedItem >= 0 && leftList.SelectedItem < currentPackages.Count)
+          {
+            var selectedPackage = currentPackages[leftList.SelectedItem];
+            var success = await RunWithProgressDialog(
+                "Installing Package",
+                $"Installing {selectedPackage.Id}",
+                async (dialog) => await InstallPackageAsync(selectedPackage.Id)
+                );
+            if (success)
+            {
+              refreshProjectPackages(rightBottomList);
+            }
+          }
+        };
 
     // Handle input field submission
     inputField.KeyPress += async (args) =>
@@ -312,25 +578,28 @@ class Program
           return;
         }
 
-
-
         try
         {
 
           packageResults.Clear();
           packageResults.Add("Searching...");
           leftList.SetSource(packageResults);
-          currentPackages = await SearchNugetPackagesAsync(searchTerm);
+          // currentPackages = await SearchNugetPackagesAsync(searchTerm);
+          currentPackages = await RunWithProgressDialog(
+              "Searching NuGet",
+             $"Searching for {searchTerm}",
+          async (dialog) => await SearchNugetPackagesAsync(searchTerm)
+              );
           Application.MainLoop.Invoke(() =>
-                  {
-                    packageResults.Clear();
-                    packageResults.AddRange(currentPackages.Select(p => $"{p.Id} {p.Version}"));
-                    leftList.SetSource(packageResults);
-                    inputField.Text = "";
-                    leftList.SetFocus();
-                    leftList.SelectedItem = 0;
-                    updatePackageDetails(rightTopList, currentPackages[0]);
-                  });
+            {
+              packageResults.Clear();
+              packageResults.AddRange(currentPackages.Select(p => $"{p.Id} {p.Version}"));
+              leftList.SetSource(packageResults);
+              inputField.Text = "";
+              leftList.SetFocus();
+              leftList.SelectedItem = 0;
+              updatePackageDetails(rightTopList, currentPackages[0]);
+            });
         }
         catch (Exception ex)
         {
