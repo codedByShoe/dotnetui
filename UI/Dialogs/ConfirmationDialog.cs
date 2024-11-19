@@ -1,22 +1,17 @@
 namespace Nugetui.UI.Dialogs;
 using Terminal.Gui;
+using Nugetui.UI.Colorschemes;
 
 public static class ConfirmationDialog
 {
-  private static bool Show(string title, string message)
+  public static bool Show(string title, string message)
   {
     var result = false;
     var dialog = new Dialog(title, 60, 10);
 
     // Style the dialog
     dialog.Border.BorderStyle = BorderStyle.Single;
-    dialog.ColorScheme = new ColorScheme
-    {
-      Normal = Application.Driver.MakeAttribute(Color.White, Color.Black),
-      Focus = Application.Driver.MakeAttribute(Color.White, Color.Black),
-      HotNormal = Application.Driver.MakeAttribute(Color.White, Color.Black),
-      HotFocus = Application.Driver.MakeAttribute(Color.White, Color.Black)
-    };
+    dialog.ColorScheme = ColorschemeProvider.Dialog;
 
     // Center the dialog
     dialog.X = Pos.Center();
@@ -30,21 +25,12 @@ public static class ConfirmationDialog
       ColorScheme = dialog.ColorScheme
     };
 
-    // Style for buttons
-    var buttonScheme = new ColorScheme
-    {
-      Normal = Application.Driver.MakeAttribute(Color.White, Color.Blue),
-      Focus = Application.Driver.MakeAttribute(Color.White, Color.BrightBlue),
-      HotNormal = Application.Driver.MakeAttribute(Color.White, Color.Blue),
-      HotFocus = Application.Driver.MakeAttribute(Color.White, Color.BrightBlue)
-    };
-
     // Add No button
     var noButton = new Button("No")
     {
       X = Pos.Center() - 6,
       Y = Pos.Center() + 1,
-      ColorScheme = buttonScheme,
+      ColorScheme = ColorschemeProvider.Button,
       IsDefault = true
     };
     noButton.Clicked += () =>
@@ -58,7 +44,7 @@ public static class ConfirmationDialog
     {
       X = Pos.Center() + 6,
       Y = Pos.Center() + 1,
-      ColorScheme = buttonScheme
+      ColorScheme = ColorschemeProvider.Button
     };
     yesButton.Clicked += () =>
     {

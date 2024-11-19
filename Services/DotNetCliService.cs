@@ -86,7 +86,7 @@ public class DotNetCliService : IDotNetCliService
     }
   }
 
-  public List<string> GetInstalledPackages()
+  public async Task<List<string>> GetInstalledPackagesAsync()
   {
 
     var packages = new List<string>();
@@ -110,7 +110,7 @@ public class DotNetCliService : IDotNetCliService
       }
 
       var output = process.StandardOutput.ReadToEnd();
-      process.WaitForExit();
+      await process.WaitForExitAsync();
 
       if (string.IsNullOrWhiteSpace(output))
       {

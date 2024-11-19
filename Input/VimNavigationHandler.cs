@@ -3,7 +3,7 @@ using Terminal.Gui;
 
 public static class VimNavigationHandler
 {
-  static void HandleVertical(ListView listView, KeyEvent keyEvent)
+  public static void HandleVertical(ListView listView, KeyEvent keyEvent)
   {
     if (listView.Source?.Count > 0)
     {

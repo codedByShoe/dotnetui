@@ -34,4 +34,5 @@ public class ProgressDialog : Dialog
   {
     Application.Run(this);
   }
+
 }

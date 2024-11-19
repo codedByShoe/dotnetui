@@ -5,5 +5,5 @@ public interface IDotNetCliService
   Task<bool> InstallPackageAsync(string packageId);
   Task<bool> UninstallPackageAsync(string packageId);
   Task<bool> RestorePackageListAsync();
-  List<string> GetInstalledPackages();
+  Task<List<string>> GetInstalledPackagesAsync();
 }
