@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nugetui", "Nugetui\Nugetui.csproj", "{C463A3F2-B1B7-4E49-9E86-92D546BAACA5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nugetui.Tests", "Nugetui.Tests\Nugetui.Tests.csproj", "{01A94354-F6DE-4491-AC0C-71182EA5F128}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C463A3F2-B1B7-4E49-9E86-92D546BAACA5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C463A3F2-B1B7-4E49-9E86-92D546BAACA5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C463A3F2-B1B7-4E49-9E86-92D546BAACA5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C463A3F2-B1B7-4E49-9E86-92D546BAACA5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{01A94354-F6DE-4491-AC0C-71182EA5F128}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{01A94354-F6DE-4491-AC0C-71182EA5F128}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{01A94354-F6DE-4491-AC0C-71182EA5F128}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{01A94354-F6DE-4491-AC0C-71182EA5F128}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
